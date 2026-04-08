@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nestor AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /* ── Tokens ─────────────────────────────────────────────────── */
+    :root {
+      --bg:         #0e0e11;
+      --surface:    #16161a;
+      --surface2:   #1e1e24;
+      --border:     #2a2a35;
+      --accent:     #6c63ff;
+      --accent2:    #a78bfa;
+      --text:       #e8e8f0;
+      --muted:      #7070a0;
+      --user-bg:    #6c63ff;
+      --nestor-bg:  #1e1e24;
+      --radius:     14px;
+      --sidebar-w:  260px;
+      --font:       'Sora', sans-serif;
+      --mono:       'JetBrains Mono', monospace;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── Sidebar ────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 4px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .logo-mark {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 0.95rem; color: #fff;
+      flex-shrink: 0;
+    }
+    .logo-text { font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em; }
+
+    .btn-new {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      display: flex; align-items: center; gap: 8px;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-new:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    .sidebar-action {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 9px 14px;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-align: left;
+      display: flex; align-items: center; gap: 8px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .sidebar-action:hover { background: var(--surface2); color: var(--text); }
+
+    .sidebar-spacer { flex: 1; }
+
+    .sidebar-footer {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: center;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      line-height: 1.6;
+    }
+
+    /* ── Main ───────────────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    /* ── Top bar ────────────────────────────────────────────────── */
+    .topbar {
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg);
+    }
+
+    .nestor-orb {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 1rem; color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 0 rgba(108,99,255,0.4);
+      transition: box-shadow 0.3s;
+    }
+    .thinking .nestor-orb {
+      animation: pulse-ring 1.2s ease-out infinite;
+    }
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0   rgba(108,99,255,0.5); }
+      70%  { box-shadow: 0 0 0 12px rgba(108,99,255,0); }
+      100% { box-shadow: 0 0 0 0   rgba(108,99,255,0); }
+    }
+
+    .topbar-info h1 { font-size: 0.95rem; font-weight: 600; }
+    .topbar-info p  { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+
+    /* ── Chat ───────────────────────────────────────────────────── */
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .msg {
+      max-width: 78%;
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      line-height: 1.65;
+      font-size: 0.9rem;
+      animation: fadeUp 0.25s ease;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-nestor {
+      align-self: flex-start;
+      background: var(--nestor-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .msg-user {
+      align-self: flex-end;
+      background: var(--user-bg);
+      color: #fff;
+    }
+
+    /* Markdown inside Nestor messages */
+    .msg-nestor p  { margin-bottom: 0.5em; }
+    .msg-nestor p:last-child { margin-bottom: 0; }
+    .msg-nestor ul, .msg-nestor ol { padding-left: 1.4em; margin: 0.4em 0; }
+    .msg-nestor code {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      background: rgba(255,255,255,0.07);
+      padding: 1px 5px;
+      border-radius: 5px;
+    }
+    .msg-nestor pre {
+      background: rgba(0,0,0,0.35);
+      border-radius: 10px;
+      padding: 14px;
+      overflow-x: auto;
+      margin: 0.6em 0;
+    }
+    .msg-nestor pre code { background: none; padding: 0; }
+    .msg-nestor strong { color: var(--accent2); }
+
+    /* Label above bubble */
+    .msg-label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 4px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .msg-wrap { display: flex; flex-direction: column; }
+    .msg-wrap.user { align-items: flex-end; }
+    .msg-wrap.nestor { align-items: flex-start; }
+
+    /* Image inside message */
+    .msg-image {
+      max-width: 280px;
+      border-radius: 10px;
+      display: block;
+      margin-top: 8px;
+    }
+    .img-download {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 0.72rem;
+      color: var(--accent2);
+      text-decoration: none;
+      font-family: var(--mono);
+    }
+    .img-download:hover { text-decoration: underline; }
+
+    /* File chip */
+    .file-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(108,99,255,0.15);
+      border: 1px solid rgba(108,99,255,0.35);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.78rem;
+      margin-top: 6px;
+      color: var(--accent2);
+    }
+
+    /* Typing cursor */
+    .cursor::after {
+      content: '▌';
+      animation: blink 0.7s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Preview bar ────────────────────────────────────────────── */
+    #preview-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 28px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    #preview-bar.active { display: flex; }
+    #preview-thumb {
+      width: 36px; height: 36px;
+      border-radius: 6px;
+      object-fit: cover;
+      display: none;
+    }
+    #preview-name { flex: 1; font-family: var(--mono); font-size: 0.78rem; }
+    #preview-clear {
+      background: none; border: none; color: var(--muted);
+      font-size: 1.1rem; cursor: pointer; line-height: 1;
+    }
+    #preview-clear:hover { color: #ff5f57; }
+
+    /* ── Input area ─────────────────────────────────────────────── */
+    .input-area {
+      padding: 16px 28px 22px;
+      background: var(--bg);
+    }
+
+    .input-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      transition: border-color 0.2s;
+    }
+    .input-wrap:focus-within { border-color: var(--accent); }
+
+    .attach-btn {
+      background: none; border: none;
+      color: var(--muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 8px;
+      transition: color 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .attach-btn:hover { color: var(--accent2); background: rgba(108,99,255,0.1); }
+
+    #user-in {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      min-width: 0;
+    }
+    #user-in::placeholder { color: var(--muted); }
+
+    .send-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: #fff;
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .send-btn:hover { opacity: 0.85; transform: scale(1.06); }
+    .send-btn svg { width: 16px; height: 16px; }
+
+    .input-hint {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    /* ── Thinking dots ──────────────────────────────────────────── */
+    .dots span {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin: 0 2px;
+      animation: dot-bounce 1.2s ease-in-out infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dot-bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40%            { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      #chat { padding: 16px; }
+      .input-area { padding: 10px 16px 16px; }
+      .msg { max-width: 92%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">N</div>
+    <span class="logo-text">Nestor AI</span>
+  </div>
+
+  <button class="btn-new" onclick="newChat()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    New Chat
+  </button>
+
+  <button class="sidebar-action" onclick="clearHistory()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    Clear History
+  </button>
+
+  <div class="sidebar-spacer"></div>
+
+  <div class="sidebar-footer">
+    Powered by Gemini AI<br/>
+    Built by BYIRINGIRO FILS Nestor
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main" id="main">
+
+  <!-- Topbar -->
+  <div class="topbar" id="topbar">
+    <div class="nestor-orb" id="orb">N</div>
+    <div class="topbar-info">
+      <h1>Nestor</h1>
+      <p id="status-text">Ready to help</p>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div id="chat"></div>
+
+  <!-- File preview bar -->
+  <div id="preview-bar">
+    <img id="preview-thumb" alt="preview" />
+    <span id="preview-name"></span>
+    <button id="preview-clear" onclick="clearAttachment()" title="Remove">×</button>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <div class="input-wrap">
+      <input type="file" id="file-in" style="display:none"
+             accept="image/*,application/pdf,text/plain"
+             onchange="handleFile(this)" />
+      <button class="attach-btn" title="Attach file" onclick="document.getElementById('file-in').click()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+        </svg>
+      </button>
+      <input type="text" id="user-in" placeholder="Ask Nestor anything…" autocomplete="off" />
+      <button class="send-btn" onclick="send()" title="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <p class="input-hint">Supports images, PDFs & text files · Enter to send</p>
+  </div>
+
+</div>
+
+<script>
+  // ── State ───────────────────────────────────────────────────────────────
+  const MAX_HISTORY = 20; // pairs kept in memory & sent to backend
+
+  let history = JSON.parse(sessionStorage.getItem('nestor_h') || '[]');
+  let attached = null; // { mimeType, data (base64), name }
+  let isThinking = false;
+
+  const chat     = document.getElementById('chat');
+  const input    = document.getElementById('user-in');
+  const topbar   = document.getElementById('topbar');
+  const statusEl = document.getElementById('status-text');
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  window.onload = () => {
+    marked.setOptions({ breaks: true, gfm: true });
+    if (history.length === 0) {
+      addBubble('nestor', "Hello! I'm **Nestor** — your AI assistant powered by Gemini. Ask me anything, or attach an image, PDF, or text file.");
+    } else {
+      history.forEach(m => {
+        if (m.role === 'user')      addBubble('user',   m.content, m.file || null);
+        else if (m.role === 'assistant') addBubble('nestor', m.content);
+      });
+    }
+  };
+
+  // ── File handling ───────────────────────────────────────────────────────
+  function handleFile(el) {
+    const file = el.files[0];
+    if (!file) return;
+
+    const ALLOWED = ['image/jpeg','image/png','image/webp','image/gif','application/pdf','text/plain'];
+    if (!ALLOWED.includes(file.type)) {
+      alert('Unsupported file type. Please use an image, PDF, or plain text file.');
+      el.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File too large. Maximum size is 5 MB.');
+      el.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      const dataUrl = e.target.result;
+      const base64  = dataUrl.split(',')[1];
+      attached = { mimeType: file.type, data: base64, name: file.name, dataUrl };
+
+      const bar   = document.getElementById('preview-bar');
+      const thumb = document.getElementById('preview-thumb');
+      const name  = document.getElementById('preview-name');
+
+      if (file.type.startsWith('image/')) {
+        thumb.src = dataUrl;
+        thumb.style.display = 'block';
+      } else {
+        thumb.style.display = 'none';
+      }
+      name.textContent = file.name;
+      bar.classList.add('active');
+    };
+    reader.readAsDataURL(file);
+    el.value = '';
+  }
+
+  function clearAttachment() {
+    attached = null;
+    document.getElementById('preview-bar').classList.remove('active');
+    document.getElementById('preview-thumb').src = '';
+  }
+
+  // ── Render bubble ───────────────────────────────────────────────────────
+  function addBubble(who, text, fileInfo = null) {
+    const wrap = document.createElement('div');
+    wrap.className = `msg-wrap ${who}`;
+
+    const label = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = who === 'nestor' ? 'Nestor' : 'You';
+
+    const bubble = document.createElement('div');
+    bubble.className = `msg msg-${who}`;
+
+    if (who === 'nestor') {
+      bubble.innerHTML = marked.parse(text || '');
+    } else {
+      bubble.textContent = text;
+    }
+
+    // Show attached file/image if any
+    if (fileInfo) {
+      if (fileInfo.mimeType && fileInfo.mimeType.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = fileInfo.dataUrl || `data:${fileInfo.mimeType};base64,${fileInfo.data}`;
+        img.className = 'msg-image';
+        const a = document.createElement('a');
+        a.href = img.src; a.download = fileInfo.name || 'image';
+        a.className = 'img-download'; a.textContent = '⬇ Download image';
+        bubble.appendChild(img);
+        bubble.appendChild(a);
+      } else {
+        const chip = document.createElement('div');
+        chip.className = 'file-chip';
+        chip.innerHTML = `📎 <span>${escHtml(fileInfo.name || 'file')}</span>`;
+        bubble.appendChild(chip);
+      }
+    }
+
+    wrap.appendChild(label);
+    wrap.appendChild(bubble);
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+    return bubble;
+  }
+
+  function addThinking() {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-wrap nestor';
+    wrap.id = 'thinking-wrap';
+
+    const label = document.createElement('div');
+    label.className = 'msg-label';
+    label.textContent = 'Nestor';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg msg-nestor';
+    bubble.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+
+    wrap.appendChild(label);
+    wrap.appendChild(bubble);
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function removeThinking() {
+    const el = document.getElementById('thinking-wrap');
+    if (el) el.remove();
+  }
+
+  // ── Typewriter ──────────────────────────────────────────────────────────
+  function typewrite(bubble, text) {
+    let i = 0, current = '';
+    bubble.classList.add('cursor');
+    const iv = setInterval(() => {
+      if (i < text.length) {
+        current += text[i++];
+        bubble.innerHTML = marked.parse(current);
+        chat.scrollTop = chat.scrollHeight;
+      } else {
+        clearInterval(iv);
+        bubble.classList.remove('cursor');
+      }
+    }, 14);
+  }
+
+  // ── Send ────────────────────────────────────────────────────────────────
+  async function send() {
+    if (isThinking) return;
+    const query = input.value.trim();
+    if (!query && !attached) return;
+
+    input.value = '';
+    isThinking  = true;
+
+    // Show user message
+    const fileSnap = attached ? { ...attached } : null;
+    if (query || fileSnap) addBubble('user', query, fileSnap);
+
+    // Push to history
+    if (query) history.push({ role: 'user', content: query, file: fileSnap || undefined });
+
+    // Trim history
+    while (history.length > MAX_HISTORY * 2) history.splice(0, 2);
+
+    // UI state
+    topbar.classList.add('thinking');
+    statusEl.textContent = 'Thinking…';
+    addThinking();
+
+    const fileToSend = attached ? { mimeType: attached.mimeType, data: attached.data } : null;
+    clearAttachment();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          history: history.slice(0, -1), // send all but the one we just pushed
+          file: fileToSend,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || `Server error ${res.status}`);
+      }
+
+      const reply = json.reply || '(no response)';
+      removeThinking();
+
+      const bubble = addBubble('nestor', '');
+      typewrite(bubble, reply);
+
+      history.push({ role: 'assistant', content: reply });
+      sessionStorage.setItem('nestor_h', JSON.stringify(history));
+
+    } catch (err) {
+      removeThinking();
+      addBubble('nestor', `⚠️ **Error:** ${escHtml(err.message)}`);
+    } finally {
+      isThinking = false;
+      topbar.classList.remove('thinking');
+      statusEl.textContent = 'Ready to help';
+    }
+  }
+
+  // ── Utilities ───────────────────────────────────────────────────────────
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function newChat() {
+    if (history.length && !confirm('Start a new chat? This will clear the current session.')) return;
+    history = [];
+    sessionStorage.removeItem('nestor_h');
+    chat.innerHTML = '';
+    addBubble('nestor', "New chat started. What can I help you with?");
+  }
+
+  function clearHistory() {
+    if (!confirm('Clear all chat history?')) return;
+    history = [];
+    sessionStorage.removeItem('nestor_h');
+    chat.innerHTML = '';
+    addBubble('nestor', "History cleared. Fresh start!");
+  }
+
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+</script>
+</body>
+</html>
